@@ -1,45 +1,29 @@
 var express = require('express');
 
-//add mongodb require
-var mongo = require('mongodb').MongoClient
-// for mongodb objectID
-var objectId = require('mongodb').ObjectID;
+//add mongoose require
+var mongoose = require('mongoose');
+mongoose.connect('mongodb://localhost:27017/Express-TestDB');
+var Schema = mongoose.Schema;
 
 
 var router = express.Router();
 
 // added mongodb url
-var url = 'mongodb://localhost:27017';
+// var url = 'mongodb://localhost:27017';
 
+var userDataSchema = new Schema({
+  title: {type: String, required: true},
+  content: String,
+  author: String
+}, {collection: 'userdata'});
+
+var UserData = mongoose.model('UserData', userDataSchema);
 
 /* GET home page. */
 router.get('/', function(req, res, next) {
   res.render('index', { title: 'Example Express Title', body: ' body Example Express' });
 });
 
-// router.get('/sample', function(req, res, next) {
-//   res.send('Prasad Router sample');
-// });
-
-// router.get('/users', function(req, res, next) {
-//   res.send('respond with a resource');
-// });
-
-// router.get('/users/details', function(req, res, next) {
-//   res.send('user form Prasad  sacasd etail');
-// });
-
-
-//example for getting id from params
-// router.get('/test/:id',(req, res, next) =>{
-//   res.render('test', {output:req.params.id})
-// })
-
-//example of post id from user
-
-// router.post('/test/submit', (req, res, next) =>{
-//   res.redirect(`/test/${req.body.id}`)
-// })
 
 // added mongodb insert command /// / / / /
 
@@ -49,17 +33,9 @@ router.post('/insert', function(req, res, next) {
     content: req.body.content,
     author: req.body.author
   };
-  console.log(item)
 
-  mongo.connect(url, function(err, client) {
-    
-    var db = client.db('Express-TestDB');
-    
-    db.collection('userdata').insertOne(item, function(err, result) {    
-      console.log('Item inserted');
-      client.close();
-    });
-  });
+  var data = new UserData(item);
+  data.save();
 
   res.redirect('/');
 });
@@ -68,59 +44,41 @@ router.post('/insert', function(req, res, next) {
 
 router.get('/get-data', (req, res, next) => {
   var resultArray = [];
-  mongo.connect(url, (err, client) =>{
-   
-    var db = client.db('Express-TestDB');
+  UserData.find({})
+  .then((data) => {
 
-    var cursor = db.collection('userdata').find();
-    cursor.forEach((doc, err) => {
+    data.forEach((doc, err) => {
       
       resultArray.push(doc);
-    }, () => {
-      client.close();
-      res.render('index', {items: resultArray});
     });
+
+    res.render('index', {items: data});
+    
   });
 });
 
 // added update command
 
 router.post('/update', (req, res, next) => {
-  var item = {
-    title: req.body.title,
-    content: req.body.content,
-    author: req.body.author
-  };
   var id = req.body.id;
 
-  mongo.connect(url, (err, client) => {
-   
-    var db = client.db('Express-TestDB');
-
-    db.collection('userdata').updateOne({"_id": objectId(id)}, {$set: item}, (err, result) => {
-     
-
-      console.log('Item updated');
-      client.close();
-    });
-  });
+  UserData.findById(id, function(err, doc) {
+    if (err) {
+      console.error('error, no entry found');
+    }
+    doc.title = req.body.title;
+    doc.content = req.body.content;
+    doc.author = req.body.author;
+    doc.save();
+  })
+  res.redirect('/');
 });
 
 // added delete command
 router.post('/delete', (req, res, next) =>{
   var id = req.body.id;
-
-  mongo.connect(url, (err, client) =>{
-
-    var db = client.db('Express-TestDB');
-
-    db.collection('userdata').deleteOne({"_id": objectId(id)}, (err, result) =>{
-      
-
-      console.log('Item deleted');
-      client.close();
-    });
-  });
+  UserData.findByIdAndRemove(id).exec();
+  res.redirect('/');
 });
 
 module.exports = router;
